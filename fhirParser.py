@@ -1,14 +1,8 @@
 from fhirclient import client
+import sqlite3
 import datetime
 import fhirclient.models.observation as obs
 import fhirclient.models.patient as p
-
-#Define the FHIR Endpoint
-settings = {
-    'app_id': 'my_web_app',
-    'api_base': 'https://fhirtest.uhn.ca/baseDstu3'
-}
-smart = client.FHIRClient(settings=settings)
 
 class Patient():
     """Patient class is used to house data from fhir and pass it to app.py to be used in the static folders"""
@@ -33,18 +27,27 @@ class Patient():
     def age(self):
         return self.__age
 
-#Perform a GET on the Test siblings by id and add them to a patient dictionary
-fhirPatients = {}
-fhirPatients['cf-1507072796559'] = p.Patient.read('cf-1507072796559', smart.server)
-fhirPatients['cf-1508283569165'] = p.Patient.read('cf-1508283569165', smart.server)
-fhirPatients['cf-1508283628125'] = p.Patient.read('cf-1508283628125', smart.server)
+#Define the FHIR Endpoint
+settings = {
+    'app_id': 'my_web_app',
+    'api_base': 'https://fhirtest.uhn.ca/baseDstu3'
+}
 
-patients = []
-for p_id,p in fhirPatients.items():
-    name = p.name[0].given[0] + p.name[0].family
-    birth = p.birthDate.isostring.split("-")
-    age = str(int(datetime.date.today().year) - int(birth[0]))
-    patients[p_id] = Patient(name, gender, age)
+#fhirIDs = ['cf-1507072796559','cf-1508283569165', 'cf-1508283628125']
 
-for patient in patients:
-    print(patient.__str__())
+def parse(fhirIDs):
+    parsed_patients = []
+    #Perform a GET on the fhir patients by id and add them to a patient database
+    smart = client.FHIRClient(settings=settings)
+    fhirPatients = {}
+    for fhirID in fhirIDs:
+        fhirPatients[fhirID] = p.Patient.read(fhirID, smart.server)
+
+    for p_id,patient in fhirPatients.items():
+        name = patient.name[0].given[0] + " " + patient.name[0].family
+        birth = patient.birthDate.isostring.split("-")
+        age = str(int(datetime.date.today().year) - int(birth[0]))
+        gender = patient.gender
+        parsed_patients.append(Patient(name, gender, age))
+
+    return parsed_patients
